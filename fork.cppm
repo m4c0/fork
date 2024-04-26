@@ -26,7 +26,7 @@ pair read(yoyo::reader *r);
 
       .fmap([w] { return w->tellp(); })
       .map([&](auto e) { end = e; })
-      .fmap([&] { return w->seekp(start); })
+      .fmap([&] { return w->seekp(start - 4); })
 
       .fmap([&] { return w->write_u32(end - start); })
       .fmap([&] { return w->seekp(end); });
