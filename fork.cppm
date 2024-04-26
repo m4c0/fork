@@ -24,6 +24,14 @@ mno::req<pair> read(yoyo::reader *r) {
         return res;
       });
 }
+mno::req<void> read_list(yoyo::reader *r, auto &&fn) {
+  return frk::read(r)
+      .fmap(fn)
+      .fmap([&] { return read_list(r, fn); })
+      .if_failed([&](auto msg) {
+        return r->eof().assert([](auto v) { return v; }, msg).map([](auto) {});
+      });
+}
 
 [[nodiscard]] mno::req<void> push(fourcc_t fourcc, yoyo::writer *w, auto &&fn) {
   uint32_t start{};
