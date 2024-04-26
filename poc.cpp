@@ -20,12 +20,16 @@ void create_file() {
   }).take(fail);
 }
 
+auto read_chunk(frk::pair p) {
+  auto [fourcc, data] = p;
+  return data.read_u32().map([&](auto n) {
+    silog::log(silog::info, "FourCC: %08X - Data: %d", fourcc, n);
+  });
+}
 void read_file() {
   auto r = yoyo::file_reader::open("out/test.dat").take(fail);
   while (!r.eof().take(fail)) {
-    auto [fourcc, data] = frk::read(&r);
-    auto n = data.read_u32().take(fail);
-    silog::log(silog::info, "FourCC: %08X - Data: %d", fourcc, n);
+    frk::read(&r).fmap(read_chunk).take(fail);
   }
 }
 

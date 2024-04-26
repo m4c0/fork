@@ -11,7 +11,19 @@ struct pair {
   fourcc_t fourcc;
   yoyo::subreader data;
 };
-pair read(yoyo::reader *r);
+mno::req<pair> read(yoyo::reader *r) {
+  pair res{};
+  return r->read_u32()
+      .map([&](auto fourcc) { res.fourcc = fourcc; })
+
+      .fmap([&] { return r->read_u32(); })
+      .fmap([&](auto len) { return yoyo::subreader::create(r, len); })
+
+      .map([&](auto data) {
+        res.data = data;
+        return res;
+      });
+}
 
 [[nodiscard]] mno::req<void> push(fourcc_t fourcc, yoyo::writer *w, auto &&fn) {
   uint32_t start{};
