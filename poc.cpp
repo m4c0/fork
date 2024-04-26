@@ -26,14 +26,15 @@ auto read_chunk(frk::pair p) {
     silog::log(silog::info, "FourCC: %08X - Data: %d", fourcc, n);
   });
 }
-auto read_list(frk::pair p) {
+mno::req<void> read_list(frk::pair p) {
   auto [fourcc, data] = p;
   return frk::read(&data)
       .fmap(read_chunk)
-      .fmap([&] { return frk::read(&data); })
-      .fmap(read_chunk)
-      .fmap([&] { return frk::read(&data); })
-      .fmap(read_chunk);
+      .fmap([&] { return read_list(p); })
+      .if_failed([&](auto msg) {
+        return data.eof().assert([](auto v) { return v; }, msg).map([](auto) {
+        });
+      });
 }
 void read_file() {
   auto r = yoyo::file_reader::open("out/test.dat").take(fail);
