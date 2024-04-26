@@ -8,13 +8,16 @@ void fail(const char *msg) {
   throw 0;
 }
 
+auto write_chunk(yoyo::writer *w, unsigned i) {
+  return frk::push('Chnk', w, [&](auto) { return w->write_u32(i); });
+}
 void create_file() {
   yoyo::file_writer w{"out/test.dat"};
-  auto root = frk::push('MyDt', &w);
-  for (auto i = 0; i < 10; i++) {
-    auto d = frk::push('Chnk', &w);
-    w.write_u32(i * 3).take(fail);
-  }
+  frk::push('MyDt', &w, [&](auto) {
+    return write_chunk(&w, 10)
+        .fmap([&] { return write_chunk(&w, 30); })
+        .fmap([&] { return write_chunk(&w, 60); });
+  }).take(fail);
 }
 
 void read_file() {
