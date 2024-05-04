@@ -26,7 +26,10 @@ mno::req<pair> read(yoyo::reader *r) {
 }
 mno::req<void> read_list(yoyo::reader *r, auto &&fn) {
   return frk::read(r)
-      .fmap(fn)
+      .fmap([&](auto p) {
+        return fn(p).fmap(
+            [&] { return p.data.seekg(0, yoyo::seek_mode::end); });
+      })
       .fmap([&] { return read_list(r, fn); })
       .if_failed([&](auto msg) {
         return r->eof().assert([](auto v) { return v; }, msg).map([](auto) {});
