@@ -9,7 +9,7 @@ void fail(const char *msg) {
 }
 
 auto write_chunk(yoyo::writer *w, unsigned i) {
-  return frk::push('Chnk', w, [&](auto) { return w->write_u32(i); });
+  return frk::push('Chnk', w, i);
 }
 void create_file() {
   yoyo::file_writer::open("out/test.dat")

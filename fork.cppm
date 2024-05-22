@@ -8,6 +8,7 @@ static auto call(yoyo::writer *w,
                  traits::is_callable<yoyo::writer *> auto &&fn) {
   return fn(w);
 }
+static auto call(yoyo::writer *w, const auto &val) { return w->write(val); }
 
 export namespace frk {
 using fourcc_t = uint32_t;
