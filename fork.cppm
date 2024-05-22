@@ -42,6 +42,16 @@ mno::req<void> read_list(yoyo::reader *r, auto &&fn) {
       });
 }
 
+mno::req<yoyo::subreader> find(fourcc_t cc, yoyo::reader *r) {
+  return read(r).fmap([cc, r](auto p) {
+    if (p.fourcc == cc) {
+      return mno::req{p.data};
+    } else {
+      return find(cc, r);
+    }
+  });
+}
+
 [[nodiscard]] mno::req<void> push(fourcc_t fourcc, yoyo::writer *w, auto &&fn) {
   uint32_t start{};
   uint32_t end{};

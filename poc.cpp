@@ -31,12 +31,13 @@ auto read_chunk(frk::pair p) {
 }
 mno::req<void> read_list(frk::pair p) {
   auto [fourcc, data] = p;
-  // TODO: check if fourcc matches
   return frk::read_list(&data, read_chunk);
 }
 void read_file() {
   auto r = yoyo::file_reader::open("out/test.dat").take(fail);
-  frk::read(&r).fmap(read_list).take(fail);
+  frk::find('MyDt', &r)
+      .fmap([](auto r) { return frk::read_list(&r, read_chunk); })
+      .take(fail);
 }
 
 int main() {
