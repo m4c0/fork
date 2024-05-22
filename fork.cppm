@@ -4,6 +4,11 @@ import yoyo;
 
 using namespace traits::ints;
 
+static auto call(yoyo::writer *w,
+                 traits::is_callable<yoyo::writer *> auto &&fn) {
+  return fn(w);
+}
+
 export namespace frk {
 using fourcc_t = uint32_t;
 
@@ -45,7 +50,7 @@ mno::req<void> read_list(yoyo::reader *r, auto &&fn) {
       .fmap([w] { return w->tellp(); })
       .map([&](auto s) { start = s; })
 
-      .fmap([&] { return fn(w); })
+      .fmap([&] { return call(w, fn); })
 
       .fmap([w] { return w->tellp(); })
       .map([&](auto e) { end = e; })
