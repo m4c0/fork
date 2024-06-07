@@ -24,6 +24,9 @@ struct idat {
   uint8_t data[10]{0x78, 1, 0x63, 0x60, 0, 0, 0, 2, 0, 1};
 };
 
+static void do_something_with_ihdr(ihdr h) {}
+static void do_something_with_idat(idat h) {}
+
 static void create_file() {
   yoyo::file_writer::open("out/test.png")
       .fmap(frk::signature("PNG"))
@@ -34,8 +37,19 @@ static void create_file() {
       .log_error([] { throw 0; });
 }
 
+static void read_file_in_sequence() {
+  yoyo::file_reader::open("out/test.png")
+      .fmap(frk::assert("PNG"))
+      .fmap(frk::find<ihdr>("IHDR", do_something_with_ihdr))
+      .fmap(frk::find<idat>("IDAT", do_something_with_idat))
+      .fmap(frk::find("IEND"))
+      .map([](auto &&) {})
+      .log_error([] { throw 0; });
+}
+
 int main() try {
   create_file();
+  read_file_in_sequence();
   return 0;
 } catch (...) {
   return 1;

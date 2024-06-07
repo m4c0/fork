@@ -16,6 +16,22 @@ export constexpr auto signature(const char (&id)[4]) {
     return w.write(s, sizeof(s)).map([&] { return traits::move(w); });
   };
 }
+export constexpr auto assert(const char (&id)[4]) {
+  unsigned char s[]{0x89, 0, 0, 0, 0x0D, 0x0A, 0x1A, 0x0A};
+  for (auto i = 0; i < 3; i++) {
+    s[i + 1] = id[i];
+  }
+
+  return [s](auto &&r) {
+    return r.read_u64()
+        .assert(
+            [s](uint64_t n) {
+              return n == *reinterpret_cast<const uint64_t *>(s);
+            },
+            "Mismatched signature")
+        .fmap([&](auto) { return mno::req{traits::move(r)}; });
+  };
+}
 
 constexpr const auto crc_table = [] {
   struct {
@@ -67,5 +83,13 @@ constexpr auto chunk(const char (&fourcc)[5], T data) {
 }
 export constexpr auto chunk(const char (&fourcc)[5]) {
   return [=](auto &&w) { return chunk(traits::move(w), fourcc, nullptr, 0); };
+}
+
+export template <typename T>
+constexpr auto find(const char (&fourcc)[5], traits::is_callable<T> auto fn) {
+  return [&](auto &&r) { return mno::req{traits::move(r)}; };
+}
+export constexpr auto find(const char (&fourcc)[5]) {
+  return [&](auto &&r) { return mno::req{traits::move(r)}; };
 }
 } // namespace frk
