@@ -85,11 +85,20 @@ export constexpr auto chunk(const char (&fourcc)[5]) {
   return [=](auto &&w) { return chunk(traits::move(w), fourcc, nullptr, 0); };
 }
 
+inline auto find(auto &&r, jute::view fourcc, void *data, unsigned size) {
+  return mno::req{traits::move(r)};
+}
 export template <typename T>
-constexpr auto find(const char (&fourcc)[5], traits::is_callable<T> auto fn) {
-  return [&](auto &&r) { return mno::req{traits::move(r)}; };
+constexpr auto find(const char (&fourcc)[5], traits::is_callable<T> auto &fn) {
+  return [&](auto &&r) {
+    T data{};
+    return find(traits::move(r), fourcc, &data, sizeof(T)).fmap([&](auto &&r) {
+      fn(data);
+      return mno::req{traits::move(r)};
+    });
+  };
 }
 export constexpr auto find(const char (&fourcc)[5]) {
-  return [&](auto &&r) { return mno::req{traits::move(r)}; };
+  return [&](auto &&r) { return find(traits::move(r), fourcc, nullptr, 0); };
 }
 } // namespace frk
