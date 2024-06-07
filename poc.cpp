@@ -24,8 +24,12 @@ struct idat {
   uint8_t data[10]{0x78, 1, 0x63, 0x60, 0, 0, 0, 2, 0, 1};
 };
 
-static void do_something_with_ihdr(ihdr h) {}
-static void do_something_with_idat(idat h) {}
+static void do_something_with_ihdr(ihdr h) {
+  silog::log(silog::debug, "found IHDR");
+}
+static void do_something_with_idat(idat h) {
+  silog::log(silog::debug, "found IDAT");
+}
 
 static void create_file() {
   yoyo::file_writer::open("out/test.png")
