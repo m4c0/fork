@@ -1,6 +1,7 @@
 #pragma leco tool
 import fork;
 import jute;
+import silog;
 import traits;
 import yoyo;
 
