@@ -1,4 +1,4 @@
-#pragma leco tool
+// #pragma leco tool
 #define GOPT_IMPLEMENTATION
 #include "../gopt/gopt.h"
 

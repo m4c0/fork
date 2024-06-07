@@ -1,75 +1,71 @@
 export module fork;
+import jute;
+import missingno;
 import traits;
-import yoyo;
 
 using namespace traits::ints;
 
-static auto call(yoyo::writer *w,
-                 traits::is_callable<yoyo::writer *> auto &&fn) {
-  return fn(w);
-}
-static auto call(yoyo::writer *w, const auto &val) { return w->write(val); }
+namespace frk {
+export constexpr auto signature(const char (&id)[4]) {
+  unsigned char s[]{0x89, 0, 0, 0, 0x0D, 0x0A, 0x1A, 0x0A};
+  for (auto i = 0; i < 3; i++) {
+    s[i + 1] = id[i];
+  }
 
-export namespace frk {
-using fourcc_t = uint32_t;
-
-struct pair {
-  fourcc_t fourcc;
-  yoyo::subreader data;
-};
-mno::req<pair> read(yoyo::reader *r) {
-  pair res{};
-  return r->read_u32()
-      .map([&](auto fourcc) { res.fourcc = fourcc; })
-
-      .fmap([&] { return r->read_u32(); })
-      .fmap([&](auto len) { return yoyo::subreader::create(r, len); })
-
-      .map([&](auto data) {
-        res.data = data;
-        return res;
-      });
-}
-mno::req<void> read_list(yoyo::reader *r, auto &&fn) {
-  return frk::read(r)
-      .fmap([&](auto p) {
-        return fn(p).fmap(
-            [&] { return p.data.seekg(0, yoyo::seek_mode::end); });
-      })
-      .fmap([&] { return read_list(r, fn); })
-      .if_failed([&](auto msg) {
-        return r->eof().assert([](auto v) { return v; }, msg).map([](auto) {});
-      });
+  return [s](auto &&w) {
+    return w.write(s, sizeof(s)).map([&] { return traits::move(w); });
+  };
 }
 
-mno::req<yoyo::subreader> find(fourcc_t cc, yoyo::reader *r) {
-  return read(r).fmap([cc, r](auto p) {
-    if (p.fourcc == cc) {
-      return mno::req{p.data};
-    } else {
-      return find(cc, r);
+constexpr const auto crc_table = [] {
+  struct {
+    uint32_t data[256]{};
+  } res;
+
+  for (auto n = 0; n < 256; n++) {
+    uint32_t c = n;
+    for (auto k = 0; k < 8; k++) {
+      if (c & 1)
+        c = 0xedb88320U ^ (c >> 1);
+      else
+        c >>= 1;
     }
-  });
+    res.data[n] = c;
+  }
+
+  return res;
+}();
+inline constexpr uint32_t crc_byte(uint32_t c, uint8_t b) {
+  auto idx = (c ^ b) & 0xff;
+  return crc_table.data[idx] ^ (c >> 8);
+}
+inline constexpr auto crc(jute::view fourcc, const uint8_t *buf, unsigned len) {
+  uint32_t c = ~0U;
+  for (auto b : fourcc) {
+    c = crc_byte(c, b);
+  }
+  for (auto n = 0; n < len; n++) {
+    c = crc_byte(c, buf[n]);
+  }
+  return c ^ ~0U;
 }
 
-[[nodiscard]] mno::req<void> push(fourcc_t fourcc, yoyo::writer *w, auto &&fn) {
-  uint32_t start{};
-  uint32_t end{};
-  return w->write_u32(fourcc)
-      .fmap([w] { return w->write_u32(0); })
-
-      .fmap([w] { return w->tellp(); })
-      .map([&](auto s) { start = s; })
-
-      .fmap([&] { return call(w, fn); })
-
-      .fmap([w] { return w->tellp(); })
-      .map([&](auto e) { end = e; })
-      .fmap([&] { return w->seekp(start - 4); })
-
-      .fmap([&] { return w->write_u32(end - start); })
-      .fmap([&] { return w->seekp(end); });
+inline auto chunk(auto &&w, jute::view fourcc, const void *data,
+                  unsigned size) {
+  auto crc = frk::crc(fourcc, static_cast<const uint8_t *>(data), size);
+  return w.write_u32_be(size)
+      .fmap([&] { return w.write(fourcc.data(), fourcc.size()); })
+      .fmap([&] { return size == 0 ? mno::req<void>{} : w.write(data, size); })
+      .fmap([&] { return w.write_u32_be(crc); })
+      .map([&] { return traits::move(w); });
+}
+export template <typename T>
+constexpr auto chunk(const char (&fourcc)[5], T data) {
+  return [=](auto &&w) {
+    return chunk(traits::move(w), fourcc, &data, sizeof(T));
+  };
+}
+export constexpr auto chunk(const char (&fourcc)[5]) {
+  return [=](auto &&w) { return chunk(traits::move(w), fourcc, nullptr, 0); };
 }
 } // namespace frk
-
-module :private;
