@@ -3,11 +3,6 @@ import fork;
 import silog;
 import yoyo;
 
-void fail(const char *msg) {
-  silog::log(silog::error, "Error: %s", msg);
-  throw 0;
-}
-
 auto write_chunk(yoyo::writer *w, unsigned i) {
   return frk::push('Chnk', w, i);
 }
@@ -20,7 +15,7 @@ void create_file() {
               .fmap([&] { return write_chunk(&w, 60); });
         });
       })
-      .take(fail);
+      .log_error([] { throw 0; });
 }
 
 auto read_chunk(frk::pair p) {
@@ -34,10 +29,10 @@ mno::req<void> read_list(frk::pair p) {
   return frk::read_list(&data, read_chunk);
 }
 void read_file() {
-  auto r = yoyo::file_reader::open("out/test.dat").take(fail);
+  auto r = yoyo::file_reader::open("out/test.dat").log_error([] { throw 0; });
   frk::find('MyDt', &r)
       .fmap([](auto r) { return frk::read_list(&r, read_chunk); })
-      .take(fail);
+      .log_error([] { throw 0; });
 }
 
 int main() {

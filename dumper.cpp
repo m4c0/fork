@@ -19,7 +19,8 @@ static mno::req<void> dump_item(frk::pair p, unsigned ind) {
   const char *fccc = reinterpret_cast<char *>(&fourcc);
 
   return data.size().fmap([&](auto size) {
-    silog::log(silog::info, "%*sfound %.4s with %d bytes", ind, "", fccc, size);
+    silog::log(silog::info, "%*sfound %.4s with %ld bytes", ind, "", fccc,
+               size);
     for (auto fcr : fourcc_recurses) {
       if (fcr == fourcc) {
         return frk::read_list(&data,
@@ -60,7 +61,5 @@ int main(int argc, char **argv) {
       .fmap([](auto &&r) {
         return frk::read_list(&r, [&](auto p) { return dump_item(p, 0); });
       })
-      .take([](auto err) {
-        silog::log(silog::error, "error reading file: %s", err);
-      });
+      .log_error();
 }
