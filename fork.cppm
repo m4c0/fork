@@ -2,6 +2,7 @@ export module fork;
 import jute;
 import missingno;
 import traits;
+import yoyo;
 
 using namespace traits::ints;
 
@@ -85,20 +86,32 @@ export constexpr auto chunk(const char (&fourcc)[5]) {
   return [=](auto &&w) { return chunk(traits::move(w), fourcc, nullptr, 0); };
 }
 
-inline auto find(auto &&r, jute::view fourcc, void *data, unsigned size) {
-  return mno::req{traits::move(r)};
+inline auto find(auto &r, jute::view fourcc, void *data, unsigned size) {
+  uint32_t len{};
+  char buf[5]{};
+  return r.read_u32_be()
+      .map([&](auto l) { len = l; })
+      .fmap([&] { return r.read(buf, 4); })
+      .map([&] { return fourcc == buf; })
+      .fmap([&](auto found) {
+        return r.seekg(len + 4, yoyo::seek_mode::current);
+      });
 }
 export template <typename T>
 constexpr auto find(const char (&fourcc)[5], traits::is_callable<T> auto &fn) {
   return [&](auto &&r) {
     T data{};
-    return find(traits::move(r), fourcc, &data, sizeof(T)).fmap([&](auto &&r) {
+    return find(r, fourcc, &data, sizeof(T)).fmap([&] {
       fn(data);
       return mno::req{traits::move(r)};
     });
   };
 }
 export constexpr auto find(const char (&fourcc)[5]) {
-  return [&](auto &&r) { return find(traits::move(r), fourcc, nullptr, 0); };
+  return [&](auto &&r) {
+    return find(r, fourcc, nullptr, 0).fmap([&] {
+      return mno::req{traits::move(r)};
+    });
+  };
 }
 } // namespace frk
