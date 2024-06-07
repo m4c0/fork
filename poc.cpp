@@ -26,10 +26,10 @@ struct idat {
 };
 
 static void do_something_with_ihdr(ihdr h) {
-  silog::log(silog::debug, "found IHDR");
+  silog::log(silog::debug, "found IHDR of %dx%d", h.data[3], h.data[7]);
 }
 static void do_something_with_idat(idat h) {
-  silog::log(silog::debug, "found IDAT");
+  silog::log(silog::debug, "found IDAT with 3rd byte 0x%x", h.data[2]);
 }
 
 static void create_file() {

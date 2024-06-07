@@ -94,8 +94,13 @@ inline auto find(auto &r, jute::view fourcc, void *data, unsigned size) {
       .fmap([&] { return r.read(buf, 4); })
       .map([&] { return fourcc == buf; })
       .fmap([&](auto found) {
-        return r.seekg(len + 4, yoyo::seek_mode::current);
-      });
+        if (!found || data == nullptr)
+          return r.seekg(len, yoyo::seek_mode::current);
+
+        return r.read(data, size);
+      })
+      .fmap([&] { return r.read_u32_be(); })
+      .map([](auto crc) { /* TODO: check crc */ });
 }
 export template <typename T>
 constexpr auto find(const char (&fourcc)[5], traits::is_callable<T> auto &fn) {
