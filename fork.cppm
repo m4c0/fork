@@ -103,7 +103,7 @@ inline auto find(auto &r, jute::view fourcc, void *data, unsigned size) {
       .map([](auto crc) { /* TODO: check crc */ });
 }
 export template <typename T>
-constexpr auto find(const char (&fourcc)[5], traits::is_callable<T> auto &fn) {
+constexpr auto find(const char (&fourcc)[5], traits::is_callable<T> auto &&fn) {
   return [&](auto &&r) {
     T data{};
     return find(r, fourcc, &data, sizeof(T)).fmap([&] {
