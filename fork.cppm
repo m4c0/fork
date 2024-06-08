@@ -89,32 +89,37 @@ export constexpr auto chunk(const char (&fourcc)[5]) {
 inline auto find(auto &r, jute::view fourcc, void *data, unsigned size) {
   uint32_t len{};
   char buf[5]{};
+  bool found{};
   return r.read_u32_be()
       .map([&](auto l) { len = l; })
       .fmap([&] { return r.read(buf, 4); })
-      .map([&] { return fourcc == buf; })
-      .fmap([&](auto found) {
+      .map([&] { found = fourcc == buf; })
+      .fmap([&] {
         if (!found || data == nullptr)
           return r.seekg(len, yoyo::seek_mode::current);
 
         return r.read(data, size);
       })
       .fmap([&] { return r.read_u32_be(); })
-      .map([](auto crc) { /* TODO: check crc */ });
+      .map([&](auto crc) {
+        /* TODO: check crc */
+        return found;
+      });
 }
 export template <typename T>
 constexpr auto find(const char (&fourcc)[5], traits::is_callable<T> auto &&fn) {
   return [&](auto &&r) {
     T data{};
-    return find(r, fourcc, &data, sizeof(T)).fmap([&] {
-      fn(data);
+    return find(r, fourcc, &data, sizeof(T)).fmap([&](auto found) {
+      if (found)
+        fn(data);
       return mno::req{traits::move(r)};
     });
   };
 }
 export constexpr auto find(const char (&fourcc)[5]) {
   return [&](auto &&r) {
-    return find(r, fourcc, nullptr, 0).fmap([&] {
+    return find(r, fourcc, nullptr, 0).fmap([&](auto found) {
       return mno::req{traits::move(r)};
     });
   };

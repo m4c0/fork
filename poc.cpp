@@ -70,8 +70,6 @@ static void read_file_out_of_order() {
       .trace("reading file out of order")
       .log_error();
 }
-
-// TODO: find out why "find" calls PLTE handler
 static void missing_chunk() {
   yoyo::file_reader::open("out/test.png")
       .fmap(frk::assert("PNG"))
