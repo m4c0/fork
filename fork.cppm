@@ -110,11 +110,14 @@ export template <typename T>
 constexpr auto find(const char (&fourcc)[5], traits::is_callable<T> auto &&fn) {
   return [&](auto &&r) {
     T data{};
-    return find(r, fourcc, &data, sizeof(T)).fmap([&](auto found) {
-      if (found)
-        fn(data);
-      return mno::req{traits::move(r)};
-    });
+    return find(r, fourcc, &data, sizeof(T))
+        .assert([&](auto found) { return (fourcc[0] & 0x10) == 1 || found; },
+                "missing critical chunk")
+        .fmap([&](auto found) {
+          if (found)
+            fn(data);
+          return mno::req{traits::move(r)};
+        });
   };
 }
 export constexpr auto find(const char (&fourcc)[5]) {

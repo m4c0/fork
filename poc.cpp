@@ -73,9 +73,11 @@ static void read_file_out_of_order() {
 static void missing_chunk() {
   yoyo::file_reader::open("out/test.png")
       .fmap(frk::assert("PNG"))
+      .fmap(frk::find<int>("sPLT", [](int) { throw 0; }))
+      .trace("testing missing ancillary chunk")
       .fmap(frk::find<int>("PLTE", [](int) { throw 0; }))
       .map([](auto &&) {})
-      .trace("expecting missing chunk")
+      .trace("expecting missing critical chunk")
       .log_error();
 }
 
