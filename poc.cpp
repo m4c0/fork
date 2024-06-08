@@ -47,7 +47,7 @@ static void create_file() {
       .fmap(frk::chunk("IHDR", ihdr::filled()))
       .fmap(frk::chunk("IDAT", idat::filled()))
       .fmap(frk::chunk("IEND"))
-      .map([](auto &&) {})
+      .map(frk::end())
       .log_error([] { throw 0; });
 }
 
@@ -57,7 +57,7 @@ static void read_file_in_sequence() {
       .fmap(frk::find<ihdr>("IHDR", do_something_with_ihdr))
       .fmap(frk::find<idat>("IDAT", do_something_with_idat))
       .fmap(frk::find("IEND"))
-      .map([](auto &&) {})
+      .map(frk::end())
       .trace("reading file in sequence")
       .log_error();
 }
@@ -66,7 +66,7 @@ static void read_file_out_of_order() {
   yoyo::file_reader::open("out/test.png")
       .fmap(frk::assert("PNG"))
       .fmap(frk::find<idat>("IDAT", do_something_with_idat))
-      .map([](auto &&) {})
+      .map(frk::end())
       .trace("reading file out of order")
       .log_error();
 }
@@ -75,9 +75,10 @@ static void missing_chunk() {
       .fmap(frk::assert("PNG"))
       .fmap(frk::find<int>("sPLT", [](int) { throw 0; }))
       .trace("testing missing ancillary chunk")
+      .fmap(frk::reset())
       .fmap(frk::find<int>("PLTE", [](int) { throw 0; }))
-      .map([](auto &&) {})
       .trace("expecting missing critical chunk")
+      .map(frk::end())
       .log_error();
 }
 

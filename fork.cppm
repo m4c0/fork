@@ -34,6 +34,20 @@ export constexpr auto assert(const char (&id)[4]) {
   };
 }
 
+/// Utility function to "end" the chain of writer moves
+export constexpr auto end() {
+  return [](auto &&) {};
+}
+
+/// Utility to reset a stream back to the point after the file signature
+export constexpr auto reset() {
+  return [](auto &&w) {
+    return w.seekg(8, yoyo::seek_mode::set).fmap([&] {
+      return mno::req{traits::move(w)};
+    });
+  };
+}
+
 constexpr const auto crc_table = [] {
   struct {
     uint32_t data[256]{};
