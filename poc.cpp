@@ -33,6 +33,7 @@ struct idat {
   }
 };
 
+// TODO: add support for functions returning mno::req<void>
 static void do_something_with_ihdr(ihdr h) {
   silog::log(silog::debug, "found IHDR of %dx%d", h.data[3], h.data[7]);
 }
@@ -57,12 +58,24 @@ static void read_file_in_sequence() {
       .fmap(frk::find<idat>("IDAT", do_something_with_idat))
       .fmap(frk::find("IEND"))
       .map([](auto &&) {})
-      .log_error([] { throw 0; });
+      .trace("reading file in sequence")
+      .log_error();
+}
+
+// TODO: find out why "find" calls PLTE handler
+static void missing_chunk() {
+  yoyo::file_reader::open("out/test.png")
+      .fmap(frk::assert("PNG"))
+      .fmap(frk::find<int>("PLTE", [](int) { throw 0; }))
+      .map([](auto &&) {})
+      .trace("expecting missing chunk")
+      .log_error();
 }
 
 int main() try {
   create_file();
   read_file_in_sequence();
+  missing_chunk();
   return 0;
 } catch (...) {
   return 1;
