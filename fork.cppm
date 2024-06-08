@@ -125,7 +125,7 @@ constexpr auto find(const char (&fourcc)[5], traits::is_callable<T> auto &&fn) {
   return [&](auto &&r) {
     T data{};
     return find(r, fourcc, &data, sizeof(T))
-        .assert([&](auto found) { return (fourcc[0] & 0x10) == 1 || found; },
+        .assert([&](auto found) { return found || (fourcc[0] & 0x10) != 0; },
                 "missing critical chunk")
         .fmap([&](auto found) {
           if (found)
