@@ -62,6 +62,15 @@ static void read_file_in_sequence() {
       .log_error();
 }
 
+static void read_file_out_of_order() {
+  yoyo::file_reader::open("out/test.png")
+      .fmap(frk::assert("PNG"))
+      .fmap(frk::find<idat>("IDAT", do_something_with_idat))
+      .map([](auto &&) {})
+      .trace("reading file out of order")
+      .log_error();
+}
+
 // TODO: find out why "find" calls PLTE handler
 static void missing_chunk() {
   yoyo::file_reader::open("out/test.png")
@@ -75,6 +84,7 @@ static void missing_chunk() {
 int main() try {
   create_file();
   read_file_in_sequence();
+  read_file_out_of_order();
   missing_chunk();
   return 0;
 } catch (...) {
