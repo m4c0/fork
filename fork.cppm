@@ -100,7 +100,7 @@ export constexpr auto chunk(const char (&fourcc)[5]) {
   return [=](auto &&w) { return chunk(traits::move(w), fourcc, nullptr, 0); };
 }
 
-inline auto find(auto &r, jute::view fourcc, void *data, unsigned size) {
+inline auto take(auto &r, jute::view fourcc, void *data, unsigned size) {
   uint32_t len{};
   char buf[5]{};
   bool found{};
@@ -121,10 +121,10 @@ inline auto find(auto &r, jute::view fourcc, void *data, unsigned size) {
       });
 }
 export template <typename T>
-constexpr auto find(const char (&fourcc)[5], traits::is_callable<T> auto &&fn) {
+constexpr auto take(const char (&fourcc)[5], traits::is_callable<T> auto &&fn) {
   return [&](auto &&r) {
     T data{};
-    return find(r, fourcc, &data, sizeof(T))
+    return take(r, fourcc, &data, sizeof(T))
         .assert([&](auto found) { return found || (fourcc[0] & 0x10) != 0; },
                 "missing critical chunk")
         .fmap([&](auto found) {
@@ -134,9 +134,9 @@ constexpr auto find(const char (&fourcc)[5], traits::is_callable<T> auto &&fn) {
         });
   };
 }
-export constexpr auto find(const char (&fourcc)[5]) {
+export constexpr auto take(const char (&fourcc)[5]) {
   return [&](auto &&r) {
-    return find(r, fourcc, nullptr, 0).fmap([&](auto found) {
+    return take(r, fourcc, nullptr, 0).fmap([&](auto found) {
       return mno::req{traits::move(r)};
     });
   };
