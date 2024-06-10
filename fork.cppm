@@ -141,4 +141,44 @@ export constexpr auto take(const char (&fourcc)[5]) {
     });
   };
 }
+
+inline auto read(auto &r, auto &fn) {
+  yoyo::subreader in{};
+  uint32_t len{};
+  char buf[5]{};
+  return r.read_u32_be()
+      .map([&](auto l) { len = l; })
+      .fmap([&] { return r.read(buf, 4); })
+      .fmap([&] { return yoyo::subreader::create(&r, len); })
+      .fmap([&](auto sub) {
+        in = sub;
+        return r.seekg(len, yoyo::seek_mode::current);
+      })
+      .fmap([&] { return r.read_u32_be(); })
+      .map([&](auto crc) { /* TODO: check crc */ })
+      .fmap([&] { return in.seekg(0, yoyo::seek_mode::set); })
+      .map([&] { return fn(buf, in); })
+      .fmap([&](auto res) {
+        return in.seekg(0, yoyo::seek_mode::end)
+            .fmap([&] { return r.seekg(4, yoyo::seek_mode::current); })
+            .map([&] { return res; });
+      });
+}
+export constexpr auto
+scan(traits::is_callable<jute::view, yoyo::subreader> auto &&fn) {
+  return [&](auto &&r) {
+    mno::req<bool> res{true};
+    while (res.is_valid() && res.unwrap(false)) {
+      res = read(r, fn);
+    }
+    return res
+        .if_failed([&](auto msg) {
+          return r.eof().unwrap(false) ? mno::req{false}
+                                       : mno::req<bool>::failed(msg);
+        })
+        .fmap([&](auto) { return mno::req{traits::move(r)}; });
+  };
+}
+
+// TODO: "find": searches for a fourcc, fails if skipping a critical chunk
 } // namespace frk

@@ -40,6 +40,12 @@ static void do_something_with_ihdr(ihdr h) {
 static void do_something_with_idat(idat h) {
   silog::log(silog::debug, "found IDAT with 3rd byte 0x%x", h.data[2]);
 }
+static bool do_something_with_chunk(jute::view fourcc, yoyo::subreader data) {
+  silog::log(silog::debug, "found %.*s with size %d",
+             static_cast<int>(fourcc.size()), fourcc.data(),
+             static_cast<int>(data.size().unwrap(0)));
+  return true;
+}
 
 static void create_file() {
   yoyo::file_writer::open("out/test.png")
@@ -62,31 +68,20 @@ static void read_file_in_sequence() {
       .log_error();
 }
 
-static void read_file_out_of_order() {
+static void scan_file() {
   yoyo::file_reader::open("out/test.png")
       .fmap(frk::assert("PNG"))
-      .fmap(frk::take<idat>("IDAT", do_something_with_idat))
+      .fmap(frk::take<ihdr>("IHDR", do_something_with_ihdr))
+      .fmap(frk::scan(do_something_with_chunk))
       .map(frk::end())
-      .trace("reading file out of order")
-      .log_error();
-}
-static void missing_chunk() {
-  yoyo::file_reader::open("out/test.png")
-      .fmap(frk::assert("PNG"))
-      .fmap(frk::take<int>("sPLT", [](int) { throw 0; }))
-      .trace("testing missing ancillary chunk")
-      .fmap(frk::reset())
-      .fmap(frk::take<int>("PLTE", [](int) { throw 0; }))
-      .trace("expecting missing critical chunk")
-      .map(frk::end())
+      .trace("scanning file")
       .log_error();
 }
 
 int main() try {
   create_file();
   read_file_in_sequence();
-  read_file_out_of_order();
-  missing_chunk();
+  scan_file();
   return 0;
 } catch (...) {
   return 1;
