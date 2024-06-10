@@ -133,9 +133,9 @@ constexpr auto take(const char (&fourcc)[5], traits::is_callable<T> auto &&fn) {
 }
 export constexpr auto take(const char (&fourcc)[5]) {
   return [&](auto &&r) {
-    return take(r, fourcc, nullptr, 0).fmap([&](auto found) {
-      return mno::req{traits::move(r)};
-    });
+    return take(r, fourcc, nullptr, 0)
+        .fmap([&](auto found) { return mno::req{traits::move(r)}; })
+        .trace("expecting " + jute::view{fourcc});
   };
 }
 
@@ -184,7 +184,8 @@ export constexpr auto scan(traits::is_callable_r<scan_result::t, jute::view,
           return r.eof().unwrap(false) ? mno::req{false}
                                        : mno::req<bool>::failed(msg);
         })
-        .fmap([&](auto) { return mno::req{traits::move(r)}; });
+        .fmap([&](auto) { return mno::req{traits::move(r)}; })
+        .trace("scanning file");
   };
 }
 
