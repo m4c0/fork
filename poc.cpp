@@ -42,12 +42,12 @@ static mno::req<void> do_something_with_idat(idat h) {
   silog::log(silog::debug, "found IDAT with 3rd byte 0x%x", h.data[2]);
   return {};
 }
-static mno::req<bool> do_something_with_chunk(jute::view fourcc,
-                                              yoyo::subreader data) {
+static frk::scan_result::t do_something_with_chunk(jute::view fourcc,
+                                                   yoyo::subreader data) {
   silog::log(silog::debug, "found %.*s with size %d",
              static_cast<int>(fourcc.size()), fourcc.data(),
              static_cast<int>(data.size().unwrap(0)));
-  return mno::req{true};
+  return frk::scan_result::take;
 }
 
 static void create_file() {

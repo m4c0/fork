@@ -139,7 +139,14 @@ export constexpr auto take(const char (&fourcc)[5]) {
   };
 }
 
-inline auto read(auto &r, auto &fn) {
+export enum class scan_action { take, peek, stop };
+export struct scan_result {
+  using t = mno::req<scan_action>;
+  static constexpr const auto take = mno::req{scan_action::take};
+  static constexpr const auto peek = mno::req{scan_action::peek};
+  static constexpr const auto stop = mno::req{scan_action::stop};
+};
+inline auto scan_once(auto &r, auto &fn) {
   yoyo::subreader in{};
   uint32_t len{};
   char buf[5]{};
@@ -155,18 +162,18 @@ inline auto read(auto &r, auto &fn) {
       .map([&](auto crc) { /* TODO: check crc */ })
       .fmap([&] { return in.seekg(0, yoyo::seek_mode::set); })
       .fmap([&] { return fn(buf, in); })
-      .fmap([&](auto res) {
+      .fmap([&](scan_action res) {
         return in.seekg(0, yoyo::seek_mode::end)
             .fmap([&] { return r.seekg(4, yoyo::seek_mode::current); })
-            .map([&] { return res; });
+            .map([&] { return res != scan_action::stop; });
       });
 }
-export constexpr auto
-scan(traits::is_callable<jute::view, yoyo::subreader> auto &&fn) {
+export constexpr auto scan(traits::is_callable_r<scan_result::t, jute::view,
+                                                 yoyo::subreader> auto &&fn) {
   return [&](auto &&r) {
     mno::req<bool> res{true};
     while (res.is_valid() && res.unwrap(false)) {
-      res = read(r, fn);
+      res = scan_once(r, fn);
     }
     return res
         .if_failed([&](auto msg) {
