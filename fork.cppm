@@ -142,9 +142,12 @@ export constexpr auto take(const char (&fourcc)[5]) {
 export enum class scan_action { take, peek, stop };
 export struct scan_result {
   using t = mno::req<scan_action>;
+  /// Moves to the next and continue
   static constexpr const auto take = mno::req{scan_action::take};
-  static constexpr const auto peek = mno::req{scan_action::peek};
+  /// Moves to the next and stop
   static constexpr const auto stop = mno::req{scan_action::stop};
+  /// Moves to the previous and stop
+  static constexpr const auto peek = mno::req{scan_action::peek};
 };
 inline auto scan_once(auto &r, auto &fn) {
   yoyo::subreader in{};
@@ -163,9 +166,10 @@ inline auto scan_once(auto &r, auto &fn) {
       .fmap([&] { return in.seekg(0, yoyo::seek_mode::set); })
       .fmap([&] { return fn(buf, in); })
       .fmap([&](scan_action res) {
-        return in.seekg(0, yoyo::seek_mode::end)
-            .fmap([&] { return r.seekg(4, yoyo::seek_mode::current); })
-            .map([&] { return res != scan_action::stop; });
+        auto pos = res == scan_action::peek ? -8 : len + 4;
+        return in.seekg(0, yoyo::seek_mode::set)
+            .fmap([&] { return r.seekg(pos, yoyo::seek_mode::current); })
+            .map([&] { return res == scan_action::take; });
       });
 }
 export constexpr auto scan(traits::is_callable_r<scan_result::t, jute::view,

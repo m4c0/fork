@@ -47,7 +47,7 @@ static frk::scan_result::t do_something_with_chunk(jute::view fourcc,
   silog::log(silog::debug, "found %.*s with size %d",
              static_cast<int>(fourcc.size()), fourcc.data(),
              static_cast<int>(data.size().unwrap(0)));
-  return frk::scan_result::take;
+  return fourcc == "IEND" ? frk::scan_result::peek : frk::scan_result::take;
 }
 
 static void create_file() {
@@ -76,6 +76,7 @@ static void scan_file() {
       .fmap(frk::assert("PNG"))
       .fmap(frk::take<ihdr>("IHDR", do_something_with_ihdr))
       .fmap(frk::scan(do_something_with_chunk))
+      .fmap(frk::take("IEND"))
       .map(frk::end())
       .trace("scanning file")
       .log_error();
