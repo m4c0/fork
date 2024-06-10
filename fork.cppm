@@ -105,16 +105,17 @@ inline auto take(auto &r, jute::view fourcc, void *data, unsigned size) {
   char buf[5]{};
   bool found{};
   return r.read_u32_be()
+      .trace("reading length of chunk")
       .map([&](auto l) { len = l; })
-      .fmap([&] { return r.read(buf, 4); })
+      .fmap([&] { return r.read(buf, 4).trace("reading fourcc"); })
       .map([&] { found = fourcc == buf; })
       .fmap([&] {
         if (!found || data == nullptr)
           return r.seekg(len, yoyo::seek_mode::current);
 
-        return r.read(data, size);
+        return r.read(data, size).trace("reading data");
       })
-      .fmap([&] { return r.read_u32_be(); })
+      .fmap([&] { return r.read_u32_be().trace("reading CRC"); })
       .map([&](auto crc) {
         /* TODO: check crc */
         return found;
@@ -154,14 +155,15 @@ inline auto scan_once(auto &r, auto &fn) {
   uint32_t len{};
   char buf[5]{};
   return r.read_u32_be()
+      .trace("reading length of chunk")
       .map([&](auto l) { len = l; })
-      .fmap([&] { return r.read(buf, 4); })
+      .fmap([&] { return r.read(buf, 4).trace("reading fourcc"); })
       .fmap([&] { return yoyo::subreader::create(&r, len); })
       .fmap([&](auto sub) {
         in = sub;
         return r.seekg(len, yoyo::seek_mode::current);
       })
-      .fmap([&] { return r.read_u32_be(); })
+      .fmap([&] { return r.read_u32_be().trace("reading CRC"); })
       .map([&](auto crc) { /* TODO: check crc */ })
       .fmap([&] { return in.seekg(0, yoyo::seek_mode::set); })
       .fmap([&] { return fn(buf, in); })
