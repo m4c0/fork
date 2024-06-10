@@ -127,11 +127,8 @@ constexpr auto take(const char (&fourcc)[5], traits::is_callable<T> auto &&fn) {
     return take(r, fourcc, &data, sizeof(T))
         .assert([&](auto found) { return found || (fourcc[0] & 0x10) != 0; },
                 "missing critical chunk")
-        .fmap([&](auto found) {
-          if (found)
-            fn(data);
-          return mno::req{traits::move(r)};
-        });
+        .fmap([&](auto found) { return found ? fn(data) : mno::req<void>{}; })
+        .fmap([&] { return mno::req{traits::move(r)}; });
   };
 }
 export constexpr auto take(const char (&fourcc)[5]) {
@@ -157,7 +154,7 @@ inline auto read(auto &r, auto &fn) {
       .fmap([&] { return r.read_u32_be(); })
       .map([&](auto crc) { /* TODO: check crc */ })
       .fmap([&] { return in.seekg(0, yoyo::seek_mode::set); })
-      .map([&] { return fn(buf, in); })
+      .fmap([&] { return fn(buf, in); })
       .fmap([&](auto res) {
         return in.seekg(0, yoyo::seek_mode::end)
             .fmap([&] { return r.seekg(4, yoyo::seek_mode::current); })

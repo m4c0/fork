@@ -34,17 +34,20 @@ struct idat {
 };
 
 // TODO: add support for functions returning mno::req<void>
-static void do_something_with_ihdr(ihdr h) {
+static mno::req<void> do_something_with_ihdr(ihdr h) {
   silog::log(silog::debug, "found IHDR of %dx%d", h.data[3], h.data[7]);
+  return {};
 }
-static void do_something_with_idat(idat h) {
+static mno::req<void> do_something_with_idat(idat h) {
   silog::log(silog::debug, "found IDAT with 3rd byte 0x%x", h.data[2]);
+  return {};
 }
-static bool do_something_with_chunk(jute::view fourcc, yoyo::subreader data) {
+static mno::req<bool> do_something_with_chunk(jute::view fourcc,
+                                              yoyo::subreader data) {
   silog::log(silog::debug, "found %.*s with size %d",
              static_cast<int>(fourcc.size()), fourcc.data(),
              static_cast<int>(data.size().unwrap(0)));
-  return true;
+  return mno::req{true};
 }
 
 static void create_file() {
