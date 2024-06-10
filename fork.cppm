@@ -168,7 +168,7 @@ inline auto scan_once(auto &r, auto &fn) {
       .fmap([&] { return in.seekg(0, yoyo::seek_mode::set); })
       .fmap([&] { return fn(buf, in); })
       .fmap([&](scan_action res) {
-        auto pos = res == scan_action::peek ? -8 : len + 4;
+        int pos = res == scan_action::peek ? -8 : len + 4;
         return in.seekg(0, yoyo::seek_mode::set)
             .fmap([&] { return r.seekg(pos, yoyo::seek_mode::current); })
             .map([&] { return res == scan_action::take; });
