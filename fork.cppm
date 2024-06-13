@@ -166,7 +166,7 @@ inline auto scan_once(auto &r, auto &fn) {
       .fmap([&] { return r.read_u32_be().trace("reading CRC"); })
       .map([&](auto crc) { /* TODO: check crc */ })
       .fmap([&] { return in.seekg(0, yoyo::seek_mode::set); })
-      .fmap([&] { return fn(buf, in); })
+      .fmap([&] { return fn(jute::view{buf}, in); })
       .fmap([&](scan_action res) {
         int pos = res == scan_action::peek ? -8 : len + 4;
         return in.seekg(0, yoyo::seek_mode::set)
