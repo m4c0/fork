@@ -200,5 +200,6 @@ export constexpr auto scan(traits::is_callable_r<scan_result::t, jute::view,
   };
 }
 
+// TODO: "skip": like "take" but it does not read the chunk's content
 // TODO: "find": searches for a fourcc, fails if skipping a critical chunk
 } // namespace frk
