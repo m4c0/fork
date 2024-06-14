@@ -96,6 +96,10 @@ constexpr auto chunk(const char (&fourcc)[5], T data) {
     return chunk(traits::move(w), fourcc, &data, sizeof(T));
   };
 }
+export constexpr auto chunk(const char (&fourcc)[5], const void *data,
+                            unsigned size) {
+  return [=](auto &&w) { return chunk(traits::move(w), fourcc, data, size); };
+}
 export constexpr auto chunk(const char (&fourcc)[5]) {
   return [=](auto &&w) { return chunk(traits::move(w), fourcc, nullptr, 0); };
 }

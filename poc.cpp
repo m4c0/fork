@@ -54,6 +54,7 @@ static void create_file() {
   yoyo::file_writer::open("out/test.png")
       .fmap(frk::signature("PNG"))
       .fmap(frk::chunk("IHDR", ihdr::filled()))
+      .fmap(frk::chunk("sPLT", "test\0\8", 6))
       .fmap(frk::chunk("IDAT", idat::filled()))
       .fmap(frk::chunk("IEND"))
       .map(frk::end())
