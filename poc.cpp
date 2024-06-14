@@ -33,7 +33,6 @@ struct idat {
   }
 };
 
-// TODO: add support for functions returning mno::req<void>
 static mno::req<void> do_something_with_ihdr(ihdr h) {
   silog::log(silog::debug, "found IHDR of %dx%d", h.data[3], h.data[7]);
   return {};
@@ -58,6 +57,7 @@ static void create_file() {
       .fmap(frk::chunk("IDAT", idat::filled()))
       .fmap(frk::chunk("IEND"))
       .map(frk::end())
+      .trace("creating file")
       .log_error([] { throw 0; });
 }
 
@@ -66,6 +66,7 @@ static void read_file_in_sequence() {
       .fmap(frk::assert("PNG"))
       .fmap(frk::take<ihdr>("IHDR", do_something_with_ihdr))
       .fmap(frk::take<idat>("IDAT", do_something_with_idat))
+      .fmap(frk::take("noop")) // safe to ignore if non-existent
       .fmap(frk::take("IEND"))
       .map(frk::end())
       .trace("reading file in sequence")
