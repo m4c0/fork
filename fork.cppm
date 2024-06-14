@@ -114,8 +114,13 @@ inline auto take(auto &r, jute::view fourcc, void *data, unsigned size) {
       .fmap([&] { return r.read(buf, 4).trace("reading fourcc"); })
       .map([&] { found = fourcc == buf; })
       .fmap([&] {
-        if (!found || data == nullptr)
+        if (!found)
           return r.seekg(len, yoyo::seek_mode::current);
+        if (len != size)
+          return mno::req<void>::failed("expecting chunk " + fourcc +
+                                        " with a different size");
+        if (data == nullptr)
+          return mno::req<void>{};
 
         return r.read(data, size).trace("reading data");
       })
