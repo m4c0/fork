@@ -81,8 +81,11 @@ inline constexpr auto crc(jute::view fourcc, const uint8_t *buf, unsigned len) {
   return c ^ ~0U;
 }
 
-constexpr const auto critical(jute::view fourcc) {
+export constexpr const auto critical(jute::view fourcc) {
   return (fourcc[0] & 0x20) == 0;
+}
+export constexpr const auto safe_to_copy(jute::view fourcc) {
+  return (fourcc[3] & 0x20) != 0;
 }
 
 inline auto chunk(auto &&w, jute::view fourcc, const void *data,
