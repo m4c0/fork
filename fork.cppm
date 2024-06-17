@@ -188,11 +188,11 @@ inline auto scan_once(auto &r, auto &fn) {
       });
 }
 auto run_scan(auto &r, auto &fn) {
-  mno::req<bool> res{true};
-  while (res.is_valid() && res.unwrap(false)) {
-    res = scan_once(r, fn);
+  mno::req<bool> cont{true};
+  while (cont.is_valid() && cont.unwrap(false)) {
+    cont = scan_once(r, fn);
   }
-  return res.if_failed([&](auto msg) {
+  return cont.map([](auto) { return true; }).if_failed([&](auto msg) {
     return r.eof().unwrap(false) ? mno::req{false}
                                  : mno::req<bool>::failed(msg);
   });
