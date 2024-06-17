@@ -81,6 +81,10 @@ inline constexpr auto crc(jute::view fourcc, const uint8_t *buf, unsigned len) {
   return c ^ ~0U;
 }
 
+constexpr const auto critical(jute::view fourcc) {
+  return (fourcc[0] & 0x20) == 0;
+}
+
 inline auto chunk(auto &&w, jute::view fourcc, const void *data,
                   unsigned size) {
   auto crc = frk::crc(fourcc, static_cast<const uint8_t *>(data), size);
@@ -135,7 +139,7 @@ constexpr auto take(const char (&fourcc)[5], traits::is_callable<T> auto &&fn) {
   return [&](auto &&r) {
     T data{};
     return take(r, fourcc, &data, sizeof(T))
-        .assert([&](auto found) { return found || (fourcc[0] & 0x10) != 0; },
+        .assert([&](auto found) { return found || !critical(fourcc); },
                 "missing critical chunk")
         .fmap([&](auto found) { return found ? fn(data) : mno::req<void>{}; })
         .fmap([&] { return mno::req{traits::move(r)}; });
