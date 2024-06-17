@@ -1,4 +1,5 @@
 export module fork;
+import hai;
 import jute;
 import missingno;
 import traits;
@@ -198,3 +199,25 @@ constexpr auto take(const char (&fourcc)[5], traits::is_callable<T> auto &&fn) {
   });
 }
 } // namespace frk
+
+namespace frk::copy {
+export auto start(const char (&id)[4], const char *file) {
+  return yoyo::file_writer::open(file).fmap(frk::signature(id)).map(frk::end());
+}
+export constexpr auto chunk(const char (&fourcc)[5], const char *file) {
+  return frk::take(fourcc, [=](yoyo::subreader r) {
+    if (r.raw_size() == 0) {
+      return yoyo::file_writer::append(file)
+          .fmap(frk::chunk(fourcc))
+          .map(frk::end());
+    }
+    hai::array<char> data{static_cast<unsigned>(r.raw_size())};
+    return r.read(data.begin(), data.size())
+        .fmap([&] { return yoyo::file_writer::append(file); })
+        .fmap(frk::chunk(fourcc, data.begin(), data.size()))
+        .map(frk::end())
+        .trace(jute::heap{} + "copying chunk " + fourcc + " into " +
+               jute::view::unsafe(file));
+  });
+}
+} // namespace frk::copy
