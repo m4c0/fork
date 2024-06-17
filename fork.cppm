@@ -187,18 +187,20 @@ inline auto scan_once(auto &r, auto &fn) {
             .map([&] { return res == scan_action::take; });
       });
 }
+auto run_scan(auto &r, auto &fn) {
+  mno::req<bool> res{true};
+  while (res.is_valid() && res.unwrap(false)) {
+    res = scan_once(r, fn);
+  }
+  return res.if_failed([&](auto msg) {
+    return r.eof().unwrap(false) ? mno::req{false}
+                                 : mno::req<bool>::failed(msg);
+  });
+}
 export constexpr auto scan(traits::is_callable_r<scan_result::t, jute::view,
                                                  yoyo::subreader> auto &&fn) {
   return [&](auto &&r) {
-    mno::req<bool> res{true};
-    while (res.is_valid() && res.unwrap(false)) {
-      res = scan_once(r, fn);
-    }
-    return res
-        .if_failed([&](auto msg) {
-          return r.eof().unwrap(false) ? mno::req{false}
-                                       : mno::req<bool>::failed(msg);
-        })
+    return run_scan(r, fn)
         .fmap([&](auto) { return mno::req{traits::move(r)}; })
         .trace("scanning file");
   };
