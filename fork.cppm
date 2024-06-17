@@ -145,13 +145,6 @@ constexpr auto take(const char (&fourcc)[5], traits::is_callable<T> auto &&fn) {
         .fmap([&] { return mno::req{traits::move(r)}; });
   };
 }
-export constexpr auto take(const char (&fourcc)[5]) {
-  return [&](auto &&r) {
-    return take(r, fourcc, nullptr, 0)
-        .fmap([&](auto found) { return mno::req{traits::move(r)}; })
-        .trace("expecting " + jute::view{fourcc});
-  };
-}
 
 export enum class scan_action { take, peek, stop };
 export struct scan_result {
@@ -203,6 +196,28 @@ export constexpr auto scan(traits::is_callable_r<scan_result::t, jute::view,
     return run_scan(r, fn)
         .fmap([&](auto) { return mno::req{traits::move(r)}; })
         .trace("scanning file");
+  };
+}
+
+export constexpr auto take(const char (&fourcc)[5]) {
+  return [&](auto &&r) {
+    const auto scanner = [&](auto fcc, auto rdr) {
+      if (fourcc == fcc)
+        return scan_result::stop;
+      if (critical(fcc) && !critical(fourcc))
+        return scan_result::peek;
+      if (critical(fcc))
+        return scan_result::t::failed("critical chunk " + fcc + " skipped");
+      return scan_result::take;
+    };
+    return run_scan(r, scanner)
+        .fmap([&](auto found) {
+          if (!found && critical(fourcc))
+            return mno::req<void>::failed("missing critical chunk");
+          return mno::req<void>{};
+        })
+        .fmap([&] { return mno::req{traits::move(r)}; })
+        .trace("expecting " + jute::view{fourcc});
   };
 }
 
