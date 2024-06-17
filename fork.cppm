@@ -164,42 +164,37 @@ export constexpr auto scan(traits::is_callable_r<scan_result::t, jute::view,
   };
 }
 
-inline auto take(auto &r, jute::view fourcc, auto &&fn) {
-  const auto scanner = [&](auto fcc, auto rdr) {
-    if (fourcc == fcc)
-      return fn(rdr).map([] { return scan_action::stop; });
-    if (critical(fcc) && !critical(fourcc))
-      return scan_result::peek;
-    if (critical(fcc))
-      return scan_result::t::failed("critical chunk " + fcc + " skipped");
-    return scan_result::take;
+export constexpr auto take(const char (&fourcc)[5],
+                           traits::is_callable<yoyo::subreader> auto &&fn) {
+  return [&](auto &&r) {
+    const auto scanner = [&](auto fcc, auto rdr) {
+      if (fourcc == fcc)
+        return fn(rdr).map([] { return scan_action::stop; });
+      if (critical(fcc) && !critical(fourcc))
+        return scan_result::peek;
+      if (critical(fcc))
+        return scan_result::t::failed("critical chunk " + fcc + " skipped");
+      return scan_result::take;
+    };
+    return run_scan(r, scanner)
+        .fmap([&](auto found) {
+          if (!found && critical(fourcc))
+            return mno::req<bool>::failed("missing critical chunk");
+          return mno::req{found};
+        })
+        .fmap([&](auto found) { return mno::req{traits::move(r)}; })
+        .trace("expecting " + jute::view{fourcc});
   };
-  return run_scan(r, scanner)
-      .fmap([&](auto found) {
-        if (!found && critical(fourcc))
-          return mno::req<bool>::failed("missing critical chunk");
-        return mno::req{found};
-      })
-      .fmap([&](auto found) { return mno::req{traits::move(r)}; })
-      .trace("expecting " + jute::view{fourcc});
 }
 
 export constexpr auto take(const char (&fourcc)[5]) {
-  return [&](auto &&r) {
-    return take(r, fourcc, [&](auto) { return mno::req<void>{}; });
-  };
+  return take(fourcc, [&](auto) { return mno::req<void>{}; });
 }
 export template <typename T>
 constexpr auto take(const char (&fourcc)[5], traits::is_callable<T> auto &&fn) {
-  return [&](auto &&r) {
-    return take(r, fourcc, [&](auto rdr) {
-      T data{};
-      return rdr.read(&data, sizeof(data)).fmap([&] { return fn(data); });
-    });
-  };
-}
-export constexpr auto take(const char (&fourcc)[5],
-                           traits::is_callable<yoyo::subreader> auto &&fn) {
-  return [&](auto &&r) { return take(r, fourcc, fn); };
+  return take(fourcc, [&](auto rdr) {
+    T data{};
+    return rdr.read(&data, sizeof(data)).fmap([&] { return fn(data); });
+  });
 }
 } // namespace frk
