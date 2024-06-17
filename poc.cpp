@@ -41,9 +41,13 @@ static mno::req<void> do_something_with_idat(idat h) {
   silog::log(silog::debug, "found IDAT with 3rd byte 0x%x", h.data[2]);
   return {};
 }
+static mno::req<void> do_something_with_splt(yoyo::subreader r) {
+  silog::log(silog::debug, "found sPLT with size %ld", r.raw_size());
+  return {};
+}
 static frk::scan_result::t do_something_with_chunk(jute::view fourcc,
                                                    yoyo::subreader data) {
-  silog::log(silog::debug, "found %.*s with size %d",
+  silog::log(silog::debug, "scanned %.*s with size %d",
              static_cast<int>(fourcc.size()), fourcc.data(),
              static_cast<int>(data.size().unwrap(0)));
   return fourcc == "IEND" ? frk::scan_result::peek : frk::scan_result::take;
@@ -67,6 +71,7 @@ static void read_file_in_sequence() {
       .fmap(frk::assert("PNG"))
       .fmap(frk::take<ihdr>("IHDR", do_something_with_ihdr))
       .fmap(frk::take<idat>("IDAT", do_something_with_idat))
+      .fmap(frk::take("sPLT", do_something_with_splt))
       .fmap(frk::take("noop")) // safe to ignore if non-existent
       .fmap(frk::take("IEND"))
       .map(frk::end())

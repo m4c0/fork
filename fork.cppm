@@ -161,14 +161,10 @@ export constexpr auto scan(traits::is_callable_r<scan_result::t, jute::view,
   };
 }
 
-inline auto take(auto &r, jute::view fourcc, void *data, unsigned size) {
+inline auto take(auto &r, jute::view fourcc, auto &&fn) {
   const auto scanner = [&](auto fcc, auto rdr) {
-    if (fourcc == fcc) {
-      if (data != nullptr) {
-        return rdr.read(data, size).map([] { return scan_action::stop; });
-      }
-      return scan_result::stop;
-    }
+    if (fourcc == fcc)
+      return fn(rdr).map([] { return scan_action::stop; });
     if (critical(fcc) && !critical(fourcc))
       return scan_result::peek;
     if (critical(fcc))
@@ -186,21 +182,26 @@ inline auto take(auto &r, jute::view fourcc, void *data, unsigned size) {
 
 export constexpr auto take(const char (&fourcc)[5]) {
   return [&](auto &&r) {
-    return take(r, fourcc, nullptr, 0).fmap([&](auto found) {
-      return mno::req{traits::move(r)};
-    });
+    return take(r, fourcc, [&](auto) { return mno::req<void>{}; })
+        .fmap([&](auto found) { return mno::req{traits::move(r)}; });
   };
 }
 export template <typename T>
 constexpr auto take(const char (&fourcc)[5], traits::is_callable<T> auto &&fn) {
   return [&](auto &&r) {
     T data{};
-    return take(r, fourcc, &data, sizeof(T))
+    return take(r, fourcc,
+                [&](auto rdr) { return rdr.read(&data, sizeof(data)); })
         .fmap([&](auto found) { return fn(data); })
         .fmap([&] { return mno::req{traits::move(r)}; });
   };
 }
-
-// TODO: "skip": like "take" but it does not read the chunk's content
-// TODO: "find": searches for a fourcc, fails if skipping a critical chunk
+export constexpr auto take(const char (&fourcc)[5],
+                           traits::is_callable<yoyo::subreader> auto &&fn) {
+  return [&](auto &&r) {
+    return take(r, fourcc, fn)
+        .fmap([&](auto found) { return mno::req<void>{}; })
+        .fmap([&] { return mno::req{traits::move(r)}; });
+  };
+}
 } // namespace frk
