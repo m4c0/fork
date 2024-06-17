@@ -52,6 +52,7 @@ static frk::scan_result::t do_something_with_chunk(jute::view fourcc,
 static void create_file() {
   yoyo::file_writer::open("out/test.png")
       .fmap(frk::signature("PNG"))
+      .fmap(frk::chunk("mehh"))
       .fmap(frk::chunk("IHDR", ihdr::filled()))
       .fmap(frk::chunk("IDAT", idat::filled()))
       .fmap(frk::chunk("sPLT", "test\0\x8", 6))
