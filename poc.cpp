@@ -59,6 +59,8 @@ static void create_file() {
       .fmap(frk::chunk("mehh"))
       .fmap(frk::chunk("IHDR", ihdr::filled()))
       .fmap(frk::chunk("IDAT", idat::filled()))
+      .fmap(frk::chunk("IDAT", idat::filled()))
+      .fmap(frk::chunk("IDAT", idat::filled()))
       .fmap(frk::chunk("sPLT", "test\0\x8", 6))
       .fmap(frk::chunk("IEND"))
       .map(frk::end())
@@ -70,7 +72,7 @@ static void read_file_in_sequence() {
   yoyo::file_reader::open("out/test.png")
       .fmap(frk::assert("PNG"))
       .fmap(frk::take<ihdr>("IHDR", do_something_with_ihdr))
-      .fmap(frk::take<idat>("IDAT", do_something_with_idat))
+      .fmap(frk::take_all<idat>("IDAT", do_something_with_idat))
       .fmap(frk::take("sPLT", do_something_with_splt))
       .fmap(frk::take("noop")) // safe to ignore if non-existent
       .fmap(frk::take("IEND"))
