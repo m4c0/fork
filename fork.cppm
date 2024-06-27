@@ -14,9 +14,7 @@ export constexpr auto signature(const char (&id)[4]) {
     s[i + 1] = id[i];
   }
 
-  return [s](auto &&w) {
-    return w.write(s, sizeof(s)).map([&] { return traits::move(w); });
-  };
+  return [s](auto &w) { return w.write(s, sizeof(s)); };
 }
 export constexpr auto assert(const char (&id)[4]) {
   unsigned char s[]{0x89, 0, 0, 0, 0x0D, 0x0A, 0x1A, 0x0A};
@@ -24,29 +22,25 @@ export constexpr auto assert(const char (&id)[4]) {
     s[i + 1] = id[i];
   }
 
-  return [s](auto &&r) {
+  return [s](auto &r) {
     return r.read_u64()
         .assert(
             [s](uint64_t n) {
               return n == *reinterpret_cast<const uint64_t *>(s);
             },
             "Mismatched signature")
-        .fmap([&](auto) { return mno::req{traits::move(r)}; });
+        .map([](auto) {});
   };
 }
 
 /// Utility function to "end" the chain of writer moves
 export constexpr auto end() {
-  return [](auto &&) {};
+  return [](auto &) {};
 }
 
 /// Utility to reset a stream back to the point after the file signature
 export constexpr auto reset() {
-  return [](auto &&w) {
-    return w.seekg(8, yoyo::seek_mode::set).fmap([&] {
-      return mno::req{traits::move(w)};
-    });
-  };
+  return [](auto &w) { return w.seekg(8, yoyo::seek_mode::set); };
 }
 
 constexpr const auto crc_table = [] {
@@ -89,27 +83,23 @@ export constexpr const auto safe_to_copy(jute::view fourcc) {
   return (fourcc[3] & 0x20) != 0;
 }
 
-inline auto chunk(auto &&w, jute::view fourcc, const void *data,
-                  unsigned size) {
+inline auto chunk(auto &w, jute::view fourcc, const void *data, unsigned size) {
   auto crc = frk::crc(fourcc, static_cast<const uint8_t *>(data), size);
   return w.write_u32_be(size)
       .fmap([&] { return w.write(fourcc.data(), fourcc.size()); })
       .fmap([&] { return size == 0 ? mno::req<void>{} : w.write(data, size); })
-      .fmap([&] { return w.write_u32_be(crc); })
-      .map([&] { return traits::move(w); });
+      .fmap([&] { return w.write_u32_be(crc); });
 }
 export template <typename T>
 constexpr auto chunk(const char (&fourcc)[5], T data) {
-  return [=](auto &&w) {
-    return chunk(traits::move(w), fourcc, &data, sizeof(T));
-  };
+  return [=](auto &w) { return chunk(w, fourcc, &data, sizeof(T)); };
 }
 export constexpr auto chunk(const char (&fourcc)[5], const void *data,
                             unsigned size) {
-  return [=](auto &&w) { return chunk(traits::move(w), fourcc, data, size); };
+  return [=](auto &w) { return chunk(w, fourcc, data, size); };
 }
 export constexpr auto chunk(const char (&fourcc)[5]) {
-  return [=](auto &&w) { return chunk(traits::move(w), fourcc, nullptr, 0); };
+  return [=](auto &w) { return chunk(w, fourcc, nullptr, 0); };
 }
 
 export enum class scan_action { take, peek, stop };
@@ -158,16 +148,14 @@ auto run_scan(auto &r, auto &fn) {
 }
 export constexpr auto scan(traits::is_callable_r<scan_result::t, jute::view,
                                                  yoyo::subreader> auto &&fn) {
-  return [&](auto &&r) {
-    return run_scan(r, fn)
-        .fmap([&](auto) { return mno::req{traits::move(r)}; })
-        .trace("scanning file");
+  return [&](auto &r) {
+    return run_scan(r, fn).map([&](auto) {}).trace("scanning file");
   };
 }
 
 export constexpr auto take(const char (&fourcc)[5],
                            traits::is_callable<yoyo::subreader> auto &&fn) {
-  return [&](auto &&r) {
+  return [&](auto &r) {
     const auto scanner = [&](auto fcc, auto rdr) {
       if (fourcc == fcc)
         return fn(rdr).map([] { return scan_action::stop; });
@@ -183,7 +171,7 @@ export constexpr auto take(const char (&fourcc)[5],
             return mno::req<bool>::failed("missing critical chunk");
           return mno::req{found};
         })
-        .fmap([&](auto found) { return mno::req{traits::move(r)}; })
+        .map([&](auto found) {})
         .trace("expecting " + jute::view{fourcc});
   };
 }
@@ -201,7 +189,7 @@ constexpr auto take(const char (&fourcc)[5], traits::is_callable<T> auto &&fn) {
 
 export constexpr auto take_all(const char (&fourcc)[5],
                                traits::is_callable<yoyo::subreader> auto &&fn) {
-  return [&](auto &&r) {
+  return [&](auto &r) {
     bool got_it = false;
     const auto scanner = [&](auto fcc, auto rdr) {
       if (fourcc == fcc) {
@@ -220,7 +208,7 @@ export constexpr auto take_all(const char (&fourcc)[5],
             return mno::req<bool>::failed("missing critical chunk");
           return mno::req{found};
         })
-        .fmap([&](auto found) { return mno::req{traits::move(r)}; })
+        .map([](auto found) {})
         .trace("expecting " + jute::view{fourcc});
   };
 }
@@ -240,19 +228,21 @@ constexpr auto take_all(const char (&fourcc)[5],
 
 namespace frk::copy {
 export auto start(const char (&id)[4], const char *file) {
-  return yoyo::file_writer::open(file).fmap(frk::signature(id)).map(frk::end());
+  return yoyo::file_writer::open(file)
+      .fpeek(frk::signature(id))
+      .map(frk::end());
 }
 export constexpr auto chunk(const char (&fourcc)[5], const char *file) {
   return frk::take(fourcc, [=](yoyo::subreader r) {
     if (r.raw_size() == 0) {
       return yoyo::file_writer::append(file)
-          .fmap(frk::chunk(fourcc))
+          .fpeek(frk::chunk(fourcc))
           .map(frk::end());
     }
     hai::array<char> data{static_cast<unsigned>(r.raw_size())};
     return r.read(data.begin(), data.size())
         .fmap([&] { return yoyo::file_writer::append(file); })
-        .fmap(frk::chunk(fourcc, data.begin(), data.size()))
+        .fpeek(frk::chunk(fourcc, data.begin(), data.size()))
         .map(frk::end())
         .trace(jute::heap{} + "copying chunk " + fourcc + " into " +
                jute::view::unsafe(file));

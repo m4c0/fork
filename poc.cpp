@@ -55,14 +55,14 @@ static frk::scan_result::t do_something_with_chunk(jute::view fourcc,
 
 static void create_file() {
   yoyo::file_writer::open("out/test.png")
-      .fmap(frk::signature("PNG"))
-      .fmap(frk::chunk("mehh"))
-      .fmap(frk::chunk("IHDR", ihdr::filled()))
-      .fmap(frk::chunk("IDAT", idat::filled()))
-      .fmap(frk::chunk("IDAT", idat::filled()))
-      .fmap(frk::chunk("IDAT", idat::filled()))
-      .fmap(frk::chunk("sPLT", "test\0\x8", 6))
-      .fmap(frk::chunk("IEND"))
+      .fpeek(frk::signature("PNG"))
+      .fpeek(frk::chunk("mehh"))
+      .fpeek(frk::chunk("IHDR", ihdr::filled()))
+      .fpeek(frk::chunk("IDAT", idat::filled()))
+      .fpeek(frk::chunk("IDAT", idat::filled()))
+      .fpeek(frk::chunk("IDAT", idat::filled()))
+      .fpeek(frk::chunk("sPLT", "test\0\x8", 6))
+      .fpeek(frk::chunk("IEND"))
       .map(frk::end())
       .trace("creating file")
       .log_error([] { throw 0; });
@@ -70,12 +70,12 @@ static void create_file() {
 
 static void read_file_in_sequence() {
   yoyo::file_reader::open("out/test.png")
-      .fmap(frk::assert("PNG"))
-      .fmap(frk::take<ihdr>("IHDR", do_something_with_ihdr))
-      .fmap(frk::take_all<idat>("IDAT", do_something_with_idat))
-      .fmap(frk::take("sPLT", do_something_with_splt))
-      .fmap(frk::take("noop")) // safe to ignore if non-existent
-      .fmap(frk::take("IEND"))
+      .fpeek(frk::assert("PNG"))
+      .fpeek(frk::take<ihdr>("IHDR", do_something_with_ihdr))
+      .fpeek(frk::take_all<idat>("IDAT", do_something_with_idat))
+      .fpeek(frk::take("sPLT", do_something_with_splt))
+      .fpeek(frk::take("noop")) // safe to ignore if non-existent
+      .fpeek(frk::take("IEND"))
       .map(frk::end())
       .trace("reading file in sequence")
       .log_error();
@@ -83,10 +83,10 @@ static void read_file_in_sequence() {
 
 static void scan_file() {
   yoyo::file_reader::open("out/test.png")
-      .fmap(frk::assert("PNG"))
-      .fmap(frk::take<ihdr>("IHDR", do_something_with_ihdr))
-      .fmap(frk::scan(do_something_with_chunk))
-      .fmap(frk::take("IEND"))
+      .fpeek(frk::assert("PNG"))
+      .fpeek(frk::take<ihdr>("IHDR", do_something_with_ihdr))
+      .fpeek(frk::scan(do_something_with_chunk))
+      .fpeek(frk::take("IEND"))
       .map(frk::end())
       .trace("scanning file")
       .log_error();
