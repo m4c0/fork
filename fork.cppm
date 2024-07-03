@@ -186,6 +186,10 @@ constexpr auto take(const char (&fourcc)[5], traits::is_callable<T> auto &&fn) {
     return rdr.read(&data, sizeof(data)).fmap([&] { return fn(data); });
   });
 }
+export template <typename T>
+constexpr auto take(const char (&fourcc)[5], T *data) {
+  return take(fourcc, yoyo::read(data, sizeof(T)));
+}
 
 export constexpr auto take_all(const char (&fourcc)[5],
                                traits::is_callable<yoyo::subreader> auto &&fn) {
