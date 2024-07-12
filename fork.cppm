@@ -186,10 +186,14 @@ constexpr auto take(const char (&fourcc)[5], traits::is_callable<T> auto &&fn) {
     return rdr.read(&data, sizeof(data)).fmap([&] { return fn(data); });
   });
 }
+#if 0
+// This is not working as intended and conflicting with other signatures.
+// Better leave it off until I can come up with an unambiguous signature.
 export template <typename T>
 constexpr auto take(const char (&fourcc)[5], T *data) {
   return take(fourcc, yoyo::read(data, sizeof(T)));
 }
+#endif
 
 export constexpr auto take_all(const char (&fourcc)[5],
                                traits::is_callable<yoyo::subreader> auto &&fn) {
