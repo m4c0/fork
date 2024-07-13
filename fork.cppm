@@ -133,45 +133,53 @@ inline auto scan_once(auto &r, auto &fn) {
         int pos = res == scan_action::peek ? -8 : len + 4;
         return in.seekg(0, yoyo::seek_mode::set)
             .fmap([&] { return r.seekg(pos, yoyo::seek_mode::current); })
-            .map([&] { return res == scan_action::take; });
+            .map([&] { return res; });
       });
 }
 auto run_scan(auto &r, auto &fn) {
-  mno::req<bool> cont{true};
-  while (cont.is_valid() && cont.unwrap(false)) {
-    cont = scan_once(r, fn);
+  auto res = scan_result::take;
+  while (res == scan_result::take) {
+    res = scan_once(r, fn);
   }
-  return cont.map([](auto) { return true; }).if_failed([&](auto msg) {
-    return r.eof().unwrap(false) ? mno::req{false}
-                                 : mno::req<bool>::failed(msg);
+  return res.map([](auto) {}).if_failed([&](auto msg) {
+    return r.eof().unwrap(false) ? mno::req<void>{}
+                                 : mno::req<void>::failed(msg);
   });
 }
 export constexpr auto scan(traits::is_callable_r<scan_result::t, jute::view,
                                                  yoyo::subreader> auto &&fn) {
-  return [&](auto &r) {
-    return run_scan(r, fn).map([&](auto) {}).trace("scanning file");
-  };
+  return [&](auto &r) { return run_scan(r, fn).trace("scanning file"); };
 }
 
 export constexpr auto take(const char (&fourcc)[5],
                            traits::is_callable<yoyo::subreader> auto &&fn) {
   return [&](auto &r) {
+    bool got_it{};
     const auto scanner = [&](auto fcc, auto rdr) {
       if (fourcc == fcc)
-        return fn(rdr).map([] { return scan_action::stop; });
+        return fn(rdr).map([&] {
+          got_it = true;
+          return scan_action::stop;
+        });
       if (critical(fcc) && !critical(fourcc))
         return scan_result::peek;
       if (critical(fcc))
         return scan_result::t::failed("critical chunk " + fcc + " skipped");
       return scan_result::take;
     };
-    return run_scan(r, scanner)
-        .fmap([&](auto found) {
-          if (!found && critical(fourcc))
-            return mno::req<bool>::failed("missing critical chunk");
-          return mno::req{found};
+    unsigned initial_pos{};
+    return r.tellg()
+        .map([&](auto pos) { initial_pos = pos; })
+        .fmap([&] { return run_scan(r, scanner); })
+        .fmap([&] {
+          if (got_it)
+            return mno::req<void>{};
+
+          if (critical(fourcc))
+            return mno::req<void>::failed("missing critical chunk");
+
+          return r.seekg(initial_pos, yoyo::seek_mode::set);
         })
-        .map([&](auto found) {})
         .trace("expecting " + jute::view{fourcc});
   };
 }
@@ -181,7 +189,7 @@ export constexpr auto take(const char (&fourcc)[5]) {
 }
 export template <typename T>
 constexpr auto take(const char (&fourcc)[5], traits::is_callable<T> auto &&fn) {
-  return take(fourcc, [&](auto rdr) {
+  return take(fourcc, [&](auto &rdr) {
     T data{};
     return rdr.read(&data, sizeof(data)).fmap([&] { return fn(data); });
   });
@@ -211,12 +219,11 @@ export constexpr auto take_all(const char (&fourcc)[5],
       return scan_result::take;
     };
     return run_scan(r, scanner)
-        .fmap([&](auto found) {
-          if (!found && critical(fourcc))
-            return mno::req<bool>::failed("missing critical chunk");
-          return mno::req{found};
+        .fmap([&] {
+          if (!got_it && critical(fourcc))
+            return mno::req<void>::failed("missing critical chunk");
+          return mno::req<void>{};
         })
-        .map([](auto found) {})
         .trace("expecting " + jute::view{fourcc});
   };
 }
