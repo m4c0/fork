@@ -42,7 +42,8 @@ static mno::req<void> do_something_with_idat(idat h) {
   return {};
 }
 static mno::req<void> do_something_with_splt(yoyo::subreader r) {
-  silog::log(silog::debug, "found sPLT with size %ld", r.raw_size());
+  silog::log(silog::debug, "found sPLT with size %d",
+             static_cast<unsigned>(r.raw_size()));
   return {};
 }
 static frk::scan_result::t do_something_with_chunk(jute::view fourcc,
