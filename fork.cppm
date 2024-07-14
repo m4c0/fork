@@ -17,6 +17,13 @@ concept takes =
     !takes_subreader<T> && traits::is_callable_r<T, mno::req<void>, A> &&
     requires { A{}; };
 
+template <typename T>
+concept podish = requires {
+  T{};
+  T{T{}};
+  sizeof(T);
+};
+
 export constexpr auto signature(const char (&id)[4]) {
   unsigned char s[]{0x89, 0, 0, 0, 0x0D, 0x0A, 0x1A, 0x0A};
   for (auto i = 0; i < 3; i++) {
@@ -195,21 +202,17 @@ export constexpr auto take(const char (&fourcc)[5], takes_subreader auto &&fn) {
 export constexpr auto take(const char (&fourcc)[5]) {
   return take(fourcc, [](auto) { return mno::req<void>{}; });
 }
-export template <typename T>
+export template <podish T>
 constexpr auto take(const char (&fourcc)[5], takes<T> auto &&fn) {
   return take(fourcc, [=](auto &rdr) {
     T data{};
     return rdr.read(&data, sizeof(data)).map([=] { return data; }).fmap(fn);
   });
 }
-#if 0
-// This is not working as intended and conflicting with other signatures.
-// Better leave it off until I can come up with an unambiguous signature.
-export template <typename T>
+export template <podish T>
 constexpr auto take(const char (&fourcc)[5], T *data) {
   return take(fourcc, yoyo::read(data, sizeof(T)));
 }
-#endif
 
 export constexpr auto take_all(const char (&fourcc)[5],
                                takes_subreader auto &&fn) {
