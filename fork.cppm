@@ -8,6 +8,15 @@ import yoyo;
 using namespace traits::ints;
 
 namespace frk {
+template <typename T>
+concept takes_subreader =
+    traits::is_callable_r<T, mno::req<void>, yoyo::subreader>;
+
+template <typename T, typename A>
+concept takes =
+    !takes_subreader<T> && traits::is_callable_r<T, mno::req<void>, A> &&
+    requires { A{}; };
+
 export constexpr auto signature(const char (&id)[4]) {
   unsigned char s[]{0x89, 0, 0, 0, 0x0D, 0x0A, 0x1A, 0x0A};
   for (auto i = 0; i < 3; i++) {
@@ -151,9 +160,8 @@ export constexpr auto scan(traits::is_callable_r<scan_result::t, jute::view,
   return [&](auto &r) { return run_scan(r, fn).trace("scanning file"); };
 }
 
-export constexpr auto take(const char (&fourcc)[5],
-                           traits::is_callable<yoyo::subreader> auto &&fn) {
-  return [&](auto &r) {
+export constexpr auto take(const char (&fourcc)[5], takes_subreader auto &&fn) {
+  return [=](auto &r) {
     bool got_it{};
     const auto scanner = [&](auto fcc, auto rdr) {
       if (fourcc == fcc)
@@ -185,13 +193,13 @@ export constexpr auto take(const char (&fourcc)[5],
 }
 
 export constexpr auto take(const char (&fourcc)[5]) {
-  return take(fourcc, [&](auto) { return mno::req<void>{}; });
+  return take(fourcc, [](auto) { return mno::req<void>{}; });
 }
 export template <typename T>
-constexpr auto take(const char (&fourcc)[5], traits::is_callable<T> auto &&fn) {
-  return take(fourcc, [&](auto &rdr) {
+constexpr auto take(const char (&fourcc)[5], takes<T> auto &&fn) {
+  return take(fourcc, [=](auto &rdr) {
     T data{};
-    return rdr.read(&data, sizeof(data)).fmap([&] { return fn(data); });
+    return rdr.read(&data, sizeof(data)).map([=] { return data; }).fmap(fn);
   });
 }
 #if 0
@@ -204,8 +212,8 @@ constexpr auto take(const char (&fourcc)[5], T *data) {
 #endif
 
 export constexpr auto take_all(const char (&fourcc)[5],
-                               traits::is_callable<yoyo::subreader> auto &&fn) {
-  return [&](auto &r) {
+                               takes_subreader auto &&fn) {
+  return [=](auto &r) {
     bool got_it = false;
     const auto scanner = [&](auto fcc, auto rdr) {
       if (fourcc == fcc) {
@@ -228,12 +236,11 @@ export constexpr auto take_all(const char (&fourcc)[5],
   };
 }
 export constexpr auto take_all(const char (&fourcc)[5]) {
-  return take_all(fourcc, [&](auto) { return mno::req<void>{}; });
+  return take_all(fourcc, [](auto) { return mno::req<void>{}; });
 }
 export template <typename T>
-constexpr auto take_all(const char (&fourcc)[5],
-                        traits::is_callable<T> auto &&fn) {
-  return take_all(fourcc, [&](auto rdr) {
+constexpr auto take_all(const char (&fourcc)[5], takes<T> auto &&fn) {
+  return take_all(fourcc, [=](auto rdr) {
     T data{};
     return rdr.read(&data, sizeof(data)).fmap([&] { return fn(data); });
   });
