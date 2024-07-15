@@ -106,9 +106,13 @@ inline auto chunk(auto &w, jute::view fourcc, const void *data, unsigned size) {
       .fmap([&] { return size == 0 ? mno::req<void>{} : w.write(data, size); })
       .fmap([&] { return w.write_u32_be(crc); });
 }
-export template <typename T>
+export template <podish T>
 constexpr auto chunk(const char (&fourcc)[5], const T &data) {
   return [=](auto &w) { return chunk(w, fourcc, &data, sizeof(T)); };
+}
+export template <podish T>
+constexpr auto chunk(const char (&fourcc)[5], const T *data) {
+  return [=](auto &w) { return chunk(w, fourcc, data, sizeof(T)); };
 }
 export constexpr auto chunk(const char (&fourcc)[5], const void *data,
                             const unsigned &size) {
