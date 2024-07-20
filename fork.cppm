@@ -19,7 +19,7 @@ concept takes =
 
 template <typename T>
 concept podish = requires {
-  T{};
+  { traits::decay_t<T>{} } -> traits::same_as<T>;
   T{T{}};
   sizeof(T);
 };
