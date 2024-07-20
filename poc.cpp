@@ -57,7 +57,7 @@ static frk::scan_result::t do_something_with_chunk(jute::view fourcc,
 static void create_file() {
   yoyo::file_writer::open("out/test.png")
       .fpeek(frk::signature("PNG"))
-      .fpeek(frk::chunk("mehh"))
+      .fpeek(frk::chunk("mehh", 4, yoyo::write_u32_be(0xcafecafe)))
       .fpeek(frk::chunk("IHDR", ihdr::filled()))
       .fpeek(frk::chunk("IDAT", idat::filled()))
       .fpeek(frk::chunk("IDAT", idat::filled()))

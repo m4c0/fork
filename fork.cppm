@@ -18,6 +18,9 @@ concept takes =
     requires { A{}; };
 
 template <typename T>
+concept chunk_writer = traits::is_callable_r<T, mno::req<void>, yoyo::writer &>;
+
+template <typename T>
 concept podish = requires {
   { traits::decay_t<T>{} } -> traits::same_as<T>;
   T{T{}};
@@ -105,6 +108,15 @@ inline auto chunk(auto &w, jute::view fourcc, const void *data, unsigned size) {
       .fmap([&] { return w.write(fourcc.data(), fourcc.size()); })
       .fmap([&] { return size == 0 ? mno::req<void>{} : w.write(data, size); })
       .fmap([&] { return w.write_u32_be(crc); });
+}
+export template <chunk_writer T>
+constexpr auto chunk(const char (&fourcc)[5], unsigned buf_sz, T &&fn) {
+  return [=](auto &w) {
+    hai::array<uint8_t> buf{buf_sz};
+    yoyo::memwriter tmp{buf};
+    return fn(tmp).fmap(
+        [&] { return chunk(w, fourcc, buf.begin(), tmp.raw_size()); });
+  };
 }
 export template <podish T>
 constexpr auto chunk(const char (&fourcc)[5], const T &data) {
