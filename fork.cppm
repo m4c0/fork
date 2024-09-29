@@ -29,17 +29,13 @@ concept podish = requires {
 
 export constexpr auto signature(const char (&id)[4]) {
   unsigned char s[]{0x89, 0, 0, 0, 0x0D, 0x0A, 0x1A, 0x0A};
-  for (auto i = 0; i < 3; i++) {
-    s[i + 1] = id[i];
-  }
+  for (auto i = 0; i < 3; i++) s[i + 1] = id[i];
 
   return [s](auto &w) { return w.write(s, sizeof(s)); };
 }
 export constexpr auto assert(const char (&id)[4]) {
   unsigned char s[]{0x89, 0, 0, 0, 0x0D, 0x0A, 0x1A, 0x0A};
-  for (auto i = 0; i < 3; i++) {
-    s[i + 1] = id[i];
-  }
+  for (auto i = 0; i < 3; i++) s[i + 1] = id[i];
 
   return [s](auto &r) {
     return r.read_u64()
@@ -53,9 +49,7 @@ export constexpr auto assert(const char (&id)[4]) {
 }
 
 /// Utility function to "end" the chain of writer moves
-export constexpr auto end() {
-  return [](auto &) {};
-}
+export constexpr auto end() { return [](auto &) {}; }
 
 /// Utility to reset a stream back to the point after the file signature
 export constexpr auto reset() {
@@ -70,10 +64,8 @@ constexpr const auto crc_table = [] {
   for (auto n = 0; n < 256; n++) {
     uint32_t c = n;
     for (auto k = 0; k < 8; k++) {
-      if (c & 1)
-        c = 0xedb88320U ^ (c >> 1);
-      else
-        c >>= 1;
+      if (c & 1) c = 0xedb88320U ^ (c >> 1);
+      else c >>= 1;
     }
     res.data[n] = c;
   }
@@ -86,12 +78,8 @@ inline constexpr uint32_t crc_byte(uint32_t c, uint8_t b) {
 }
 inline constexpr auto crc(jute::view fourcc, const uint8_t *buf, unsigned len) {
   uint32_t c = ~0U;
-  for (auto b : fourcc) {
-    c = crc_byte(c, b);
-  }
-  for (auto n = 0; n < len; n++) {
-    c = crc_byte(c, buf[n]);
-  }
+  for (auto b : fourcc) c = crc_byte(c, b);
+  for (auto n = 0; n < len; n++) c = crc_byte(c, buf[n]);
   return c ^ ~0U;
 }
 
@@ -170,9 +158,7 @@ inline auto scan_once(auto &r, auto &fn) {
 }
 auto run_scan(auto &r, auto &fn) {
   auto res = scan_result::take;
-  while (res == scan_result::take) {
-    res = scan_once(r, fn);
-  }
+  while (res == scan_result::take) res = scan_once(r, fn);
   return res.map([](auto) {}).if_failed([&](auto msg) {
     return r.eof().unwrap(false) ? mno::req<void>{}
                                  : mno::req<void>::failed(msg);
@@ -192,10 +178,8 @@ export constexpr auto take(const char (&fourcc)[5], takes_subreader auto &&fn) {
           got_it = true;
           return scan_action::stop;
         });
-      if (critical(fcc) && !critical(fourcc))
-        return scan_result::peek;
-      if (critical(fcc))
-        return scan_result::t::failed("critical chunk " + fcc + " skipped");
+      if (critical(fcc) && !critical(fourcc)) return scan_result::peek;
+      if (critical(fcc)) return scan_result::t::failed("critical chunk " + fcc + " skipped");
       return scan_result::take;
     };
     unsigned initial_pos{};
@@ -203,11 +187,9 @@ export constexpr auto take(const char (&fourcc)[5], takes_subreader auto &&fn) {
         .map([&](auto pos) { initial_pos = pos; })
         .fmap([&] { return run_scan(r, scanner); })
         .fmap([&] {
-          if (got_it)
-            return mno::req<void>{};
+          if (got_it) return mno::req<void>{};
 
-          if (critical(fourcc))
-            return mno::req<void>::failed("missing critical chunk");
+          if (critical(fourcc)) return mno::req<void>::failed("missing critical chunk");
 
           return r.seekg(initial_pos, yoyo::seek_mode::set);
         })
@@ -239,10 +221,8 @@ export constexpr auto take_all(const char (&fourcc)[5],
         got_it = true;
         return fn(rdr).map([] { return scan_action::take; });
       }
-      if (critical(fcc) && (!critical(fourcc) || got_it))
-        return scan_result::peek;
-      if (critical(fcc))
-        return scan_result::t::failed("critical chunk " + fcc + " skipped");
+      if (critical(fcc) && (!critical(fourcc) || got_it)) return scan_result::peek;
+      if (critical(fcc)) return scan_result::t::failed("critical chunk " + fcc + " skipped");
       return scan_result::take;
     };
     return run_scan(r, scanner)
