@@ -193,7 +193,7 @@ export constexpr auto take(const char (&fourcc)[5], takes_subreader auto &&fn) {
 
           return r.seekg(initial_pos, yoyo::seek_mode::set);
         })
-        .trace("expecting " + jute::view{fourcc});
+        .trace(("expecting " + jute::view{fourcc}).cstr());
   };
 }
 
@@ -265,8 +265,8 @@ export constexpr auto chunk(const char (&fourcc)[5], const char *file) {
         .fmap([&] { return yoyo::file_writer::append(file); })
         .fpeek(frk::chunk(fourcc, data.begin(), data.size()))
         .map(frk::end())
-        .trace(jute::heap{} + "copying chunk " + fourcc + " into " +
-               jute::view::unsafe(file));
+        .trace((jute::heap{} + "copying chunk " + fourcc + " into " +
+               jute::view::unsafe(file)).cstr());
   });
 }
 } // namespace frk::copy
