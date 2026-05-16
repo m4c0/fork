@@ -179,7 +179,7 @@ export constexpr auto take(const char (&fourcc)[5], takes_subreader auto &&fn) {
           return scan_action::stop;
         });
       if (critical(fcc) && !critical(fourcc)) return scan_result::peek;
-      if (critical(fcc)) return scan_result::t::failed("critical chunk " + fcc + " skipped");
+      if (critical(fcc)) return scan_result::t::failed(("critical chunk " + fcc + " skipped").heap());
       return scan_result::take;
     };
     unsigned initial_pos{};
@@ -222,7 +222,7 @@ export constexpr auto take_all(const char (&fourcc)[5],
         return fn(rdr).map([] { return scan_action::take; });
       }
       if (critical(fcc) && (!critical(fourcc) || got_it)) return scan_result::peek;
-      if (critical(fcc)) return scan_result::t::failed("critical chunk " + fcc + " skipped");
+      if (critical(fcc)) return scan_result::t::failed(("critical chunk " + fcc + " skipped").heap());
       return scan_result::take;
     };
     return run_scan(r, scanner)
@@ -231,7 +231,7 @@ export constexpr auto take_all(const char (&fourcc)[5],
             return mno::req<void>::failed("missing critical chunk");
           return mno::req<void>{};
         })
-        .trace("expecting " + jute::view{fourcc});
+        .trace(("expecting " + jute::view{fourcc}).heap());
   };
 }
 export constexpr auto take_all(const char (&fourcc)[5]) {
